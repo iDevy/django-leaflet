@@ -10,7 +10,7 @@
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
 
-L.drawVersion = '0.2.3';
+L.drawVersion = '0.2.3-dev';
 
 L.drawLocal = {
 	draw: {
@@ -44,17 +44,17 @@ L.drawLocal = {
 			},
 			polygon: {
 				tooltip: {
-					start: 'Click to start drawing shape.',
-					cont: 'Click to continue drawing shape.',
-					end: 'Click first point to close this shape.'
+					start: 'Click or tap to start drawing shape.',
+					cont: 'Click or tap to continue drawing shape.',
+					end: 'Click or tap first point to close this shape.'
 				}
 			},
 			polyline: {
 				error: '<strong>Error:</strong> shape edges cannot cross!',
 				tooltip: {
-					start: 'Click to start drawing line.',
-					cont: 'Click to continue drawing line.',
-					end: 'Click last point to finish line.'
+					start: 'Click or tap to start drawing line.',
+					cont: 'Click or tap to continue drawing line.',
+					end: 'Click or tap last point to finish line.'
 				}
 			},
 			rectangle: {
@@ -199,11 +199,10 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(14, 14),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
-		maxGuideLineLength: 4000,
 		shapeOptions: {
 			stroke: true,
 			color: '#f06eaa',
@@ -262,12 +261,13 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			}
 
 			this._mouseMarker
-				.on('mousedown', this._onMouseDown, this)
+				.on('click', this._onClick, this)
 				.addTo(this._map);
+
+            L.DomEvent.on(this._container, 'touchstart', this._onTouchStart, this);
 
 			this._map
 				.on('mousemove', this._onMouseMove, this)
-				.on('mouseup', this._onMouseUp, this)
 				.on('zoomend', this._onZoomEnd, this);
 		}
 	},
@@ -287,9 +287,9 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._map.removeLayer(this._poly);
 		delete this._poly;
 
-		this._mouseMarker
-			.off('mousedown', this._onMouseDown, this)
-			.off('mouseup', this._onMouseUp, this);
+        L.DomEvent.off(this._container, 'touchstart', this._onTouchStart);
+
+		this._mouseMarker.off('click', this._onClick, this);
 		this._map.removeLayer(this._mouseMarker);
 		delete this._mouseMarker;
 
@@ -385,6 +385,23 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		L.DomEvent.preventDefault(e.originalEvent);
 	},
 
+	_onClick: function (e) {
+		var latlng = e.target.getLatLng();
+
+		this.addVertex(latlng);
+	},
+
+    _onTouchStart: function (e) {
+        var touch = e.touches[0];
+        try {
+            var latlng = this._map.mouseEventToLatLng(touch);
+        } catch(err) {
+            var latlng = this._map.mouseEventToLatLng({pageX: touch.pageX, pageY: touch.pageY});
+        }
+        this._mouseMarker.setLatLng(latlng);
+        this.addVertex(latlng);
+    },
+
 	_vertexChanged: function (latlng, added) {
 		this._updateFinishHandler();
 
@@ -393,24 +410,6 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._clearGuides();
 
 		this._updateTooltip();
-	},
-
-	_onMouseDown: function (e) {
-		var originalEvent = e.originalEvent;
-		this._mouseDownOrigin = L.point(originalEvent.clientX, originalEvent.clientY);
-	},
-
-	_onMouseUp: function (e) {
-		if (this._mouseDownOrigin) {
-			// We detect clicks within a certain tolerance, otherwise let it
-			// be interpreted as a drag by the map
-			var distance = L.point(e.originalEvent.clientX, e.originalEvent.clientY)
-				.distanceTo(this._mouseDownOrigin);
-			if (Math.abs(distance) < 9 * (window.devicePixelRatio || 1)) {
-				this.addVertex(e.latlng);
-			}
-		}
-		this._mouseDownOrigin = null;
 	},
 
 	_updateFinishHandler: function () {
@@ -466,10 +465,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 
 	_drawGuide: function (pointA, pointB) {
 		var length = Math.floor(Math.sqrt(Math.pow((pointB.x - pointA.x), 2) + Math.pow((pointB.y - pointA.y), 2))),
-			guidelineDistance = this.options.guidelineDistance,
-			maxGuideLineLength = this.options.maxGuideLineLength,
-			// Only draw a guideline with a max length
-			i = length > maxGuideLineLength ? length - maxGuideLineLength : guidelineDistance,
+			i,
 			fraction,
 			dashPoint,
 			dash;
@@ -480,7 +476,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		}
 
 		//draw a dash every GuildeLineDistance
-		for (; i < length; i += this.options.guidelineDistance) {
+		for (i = this.options.guidelineDistance; i < length; i += this.options.guidelineDistance) {
 			//work out fraction along line we are
 			fraction = i / length;
 
@@ -653,6 +649,7 @@ L.Draw.Polygon = L.Draw.Polyline.extend({
 		// The first marker should have a click handler to close the polygon
 		if (markerCount === 1) {
 			this._markers[0].on('click', this._finishShape, this);
+            this._markers[0].on('touchstart', this._finishShape, this);//TOUCH
 		}
 
 		// Add and update the double click handler
@@ -713,6 +710,7 @@ L.Draw.Polygon = L.Draw.Polyline.extend({
 
 		if (markerCount > 0) {
 			this._markers[0].off('click', this._finishShape, this);
+            this._markers[0].off('touchstart', this._finishShape, this);//TOUCH
 
 			if (markerCount > 2) {
 				this._markers[markerCount - 1].off('dblclick', this._finishShape, this);
@@ -738,12 +736,7 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	addHooks: function () {
 		L.Draw.Feature.prototype.addHooks.call(this);
 		if (this._map) {
-			this._mapDraggable = this._map.dragging.enabled();
-
-			if (this._mapDraggable) {
-				this._map.dragging.disable();
-			}
-
+			this._map.dragging.disable();
 			//TODO refactor: move cursor to styles
 			this._container.style.cursor = 'crosshair';
 
@@ -758,10 +751,7 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	removeHooks: function () {
 		L.Draw.Feature.prototype.removeHooks.call(this);
 		if (this._map) {
-			if (this._mapDraggable) {
-				this._map.dragging.enable();
-			}
-
+			this._map.dragging.enable();
 			//TODO refactor: move cursor to styles
 			this._container.style.cursor = '';
 
@@ -1032,7 +1022,7 @@ L.Edit = L.Edit || {};
 L.Edit.Poly = L.Handler.extend({
 	options: {
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(14, 14),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		})
 	},
@@ -1302,11 +1292,11 @@ L.Edit = L.Edit || {};
 L.Edit.SimpleShape = L.Handler.extend({
 	options: {
 		moveIcon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(14, 14),
 			className: 'leaflet-div-icon leaflet-editing-icon leaflet-edit-move'
 		}),
 		resizeIcon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(14, 14),
 			className: 'leaflet-div-icon leaflet-editing-icon leaflet-edit-resize'
 		})
 	},
@@ -2301,7 +2291,7 @@ L.DrawToolbar = L.Toolbar.extend({
 			},
 			{
 				enabled: this.options.circle,
-				handler: new L.Draw.Circle(map, this.options.circle),
+				handler: new L.Draw.Circle(map, this.options.cicle),
 				title: L.drawLocal.draw.toolbar.buttons.circle
 			},
 			{
@@ -2608,7 +2598,7 @@ L.EditToolbar.Edit = L.Handler.extend({
 					latlng: L.LatLngUtil.cloneLatLng(layer.getLatLng()),
 					radius: layer.getRadius()
 				};
-			} else if (layer instanceof L.Marker) { // Marker
+			} else { // Marker
 				this._uneditedLayerProps[id] = {
 					latlng: L.LatLngUtil.cloneLatLng(layer.getLatLng())
 				};
@@ -2626,7 +2616,7 @@ L.EditToolbar.Edit = L.Handler.extend({
 			} else if (layer instanceof L.Circle) {
 				layer.setLatLng(this._uneditedLayerProps[id].latlng);
 				layer.setRadius(this._uneditedLayerProps[id].radius);
-			} else if (layer instanceof L.Marker) { // Marker
+			} else { // Marker
 				layer.setLatLng(this._uneditedLayerProps[id].latlng);
 			}
 		}
@@ -2771,27 +2761,24 @@ L.EditToolbar.Delete = L.Handler.extend({
 			return;
 		}
 		this.fire('enabled', { handler: this.type});
+			//this disable other handlers
+
+        L.Handler.prototype.enable.call(this);
+        this._deletableLayers
+            .on('layeradd', this._enableLayerDelete, this)
+            .on('layerremove', this._disableLayerDelete, this);
 
 		this._map.fire('draw:deletestart', { handler: this.type });
-
-		L.Handler.prototype.enable.call(this);
-
-		this._deletableLayers
-			.on('layeradd', this._enableLayerDelete, this)
-			.on('layerremove', this._disableLayerDelete, this);
+			//allow drawLayer to be updated before beginning deletion.
 	},
 
 	disable: function () {
 		if (!this._enabled) { return; }
-
 		this._deletableLayers
 			.off('layeradd', this._enableLayerDelete, this)
 			.off('layerremove', this._disableLayerDelete, this);
-
 		L.Handler.prototype.disable.call(this);
-
 		this._map.fire('draw:deletestop', { handler: this.type });
-
 		this.fire('disabled', { handler: this.type});
 	},
 
