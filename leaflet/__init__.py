@@ -118,14 +118,12 @@ PLUGIN_FORMS = 'forms'
 
 # Add plugins required for forms (not auto-included)
 # Assets will be preprended to any existing entry in PLUGINS['forms']
-_forms_js = ['leaflet/draw/leaflet.draw.js',
-             'leaflet/leaflet.extras.js',
-             'leaflet/leaflet.forms.js',
-
-             'leaflet/draw/Draw.Feature.js',
+_forms_js = ['leaflet/draw/Draw.Feature.js',
              'leaflet/draw/Draw.Marker.js',
              'leaflet/draw/Draw.MarkerTouch.js',
-
+             'leaflet/draw/leaflet.draw.js',
+             'leaflet/leaflet.extras.js',
+             'leaflet/leaflet.forms.js'
             ]
 
 

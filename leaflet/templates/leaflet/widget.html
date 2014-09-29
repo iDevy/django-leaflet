@@ -9,6 +9,11 @@
 
 <script type="text/javascript">
     {% block vars %}var {{ module }} = {};
+
+    function isTouchDevice(){
+    return true == ("ontouchstart" in window || window.DocumentTouch && document instanceof DocumentTouch);
+    }
+    
     {{ module }}.fieldid = '{{ id }}';
     {{ module }}.modifiable = {{ modifiable|yesno:"true,false" }};
     {{ module }}.geom_type = '{{ geom_type }}';

@@ -5,7 +5,9 @@
 	I went with the touch events which are slightly more code but they were needed for polylineTouch and polygonTouch anyway. 
 	So when it's all refactored this will be quite tidy. 
 */
-L.Draw.MarkerTouch = L.Draw.Marker.extend({
+// TODO: quickfix
+//L.Draw.MarkerTouch = L.Draw.Marker.extend({
+L.Draw.Marker = L.Draw.Marker.extend({
 	initialize: function (map, options) {
 		L.Draw.Marker.prototype.initialize.call(this, map, options);
 	},
