@@ -758,7 +758,7 @@
             L.Draw.Feature.prototype._fireCreatedEvent.call(this, e)
         }
     });
-L.Draw.Marker = L.Draw.Marker.extend({
+L.Draw.MarkerTouch = L.Draw.Marker.extend({
 	initialize: function (map, options) {
 		L.Draw.Marker.prototype.initialize.call(this, map, options);
 	},
@@ -1717,6 +1717,10 @@ L.Draw.Marker = L.Draw.Marker.extend({
             }, {
                 enabled: this.options.marker,
                 handler: new L.Draw.Marker(e, this.options.marker),
+                title: L.drawLocal.draw.toolbar.buttons.marker
+            }, {
+                enabled: this.options.markertouch,
+                handler: new L.Draw.MarkerTouch(e, this.options.marker),
                 title: L.drawLocal.draw.toolbar.buttons.marker
             }]
         },
