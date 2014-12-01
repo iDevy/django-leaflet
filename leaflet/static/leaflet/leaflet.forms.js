@@ -212,22 +212,6 @@ L.GeometryField = L.Class.extend({
     },
 
     _controlDrawOptions: function () {
-        if (isTouchDevice()) {
-            return {
-                edit: {
-                    featureGroup: this.drawnItems
-                },
-                draw: {
-                    polyline: this.options.is_linestring,
-                    polygon: this.options.is_polygon,
-                    circle: false, // Turns off this drawing tool
-                    rectangle: this.options.is_polygon,
-                    marker: false, // replaced by touch for mobile devices
-                    markertouch: this.options.is_point,
-
-                }
-            };
-        }
         return {
             edit: {
                 featureGroup: this.drawnItems
